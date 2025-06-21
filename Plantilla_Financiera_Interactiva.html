@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌟 Mi Plan Financiero Interactivo</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --bg-main: #f4f7f9;
+            --primary: #007bff;
+            --primary-light: #e6f2ff;
+            --success: #28a745;
+            --success-light: #eaf6ec;
+            --danger: #dc3545;
+            --danger-light: #fbebee;
+            --warning: #ffc107;
+            --warning-light: #fff8e1;
+            --text-dark: #343a40;
+            --text-light: #6c757d;
+            --border: #dee2e6;
+            --white: #ffffff;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            --font: 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: var(--font);
+            background-color: var(--bg-main);
+            color: var(--text-dark);
+        }
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 240px;
+            background-color: var(--white);
+            padding: 20px;
+            border-right: 1px solid var(--border);
+            transition: width 0.3s;
+        }
+        .sidebar h1 {
+            font-size: 1.5rem;
+            color: var(--primary);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .nav-menu button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: none;
+            background-color: transparent;
+            text-align: left;
+            font-size: 1rem;
+            color: var(--text-light);
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .nav-menu button.active, .nav-menu button:hover {
+            background-color: var(--primary-light);
+            color: var(--primary);
+            font-weight: 600;
+        }
+        .main-content {
+            flex-grow: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+        .page { display: none; }
+        .page.active { display: block; }
+        .header { margin-bottom: 30px; }
+        .header h2 { font-size: 2rem; margin-bottom: 5px; }
+        .header p { color: var(--text-light); }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .summary-card {
+            background-color: var(--white);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            border-left: 5px solid;
+        }
+        .summary-card h3 { font-size: 1rem; color: var(--text-light); margin-bottom: 10px; }
+        .summary-card .amount { font-size: 2rem; font-weight: 600; }
+        .card-income { border-color: var(--success); }
+        .card-expense { border-color: var(--danger); }
+        .card-saving { border-color: var(--primary); }
+        .card-balance { border-color: var(--warning); }
+
+        .content-box {
+            background-color: var(--white);
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+        }
+        .form-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            align-items: flex-end;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 12px;
+            font-size: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        button.primary {
+            background-color: var(--primary);
+            color: var(--white);
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button.primary:hover { background-color: #0056b3; }
+        .table-container {
+            margin-top: 25px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            text-align: left;
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+        }
+        th { background-color: var(--bg-main); font-weight: 600; }
+        td .delete-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: var(--danger);
+        }
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+            transition: background-color 0.2s;
+        }
+        .checklist-item input { width: auto; margin-right: 15px; transform: scale(1.2); }
+        .checklist-item label { flex-grow: 1; }
+        .checklist-item.completed { background-color: var(--success-light); text-decoration: line-through; color: var(--text-light); }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            transform: scale(0.9);
+            transition: transform 0.3s;
+        }
+        .modal-overlay.active .modal-content { transform: scale(1); }
+        .modal-content h2 { font-size: 2.5rem; margin-bottom: 15px; }
+        .modal-content p { font-size: 1.2rem; margin-bottom: 25px; }
+        
+        @media (max-width: 768px) {
+            .app-container { flex-direction: column; }
+            .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+            .nav-menu { display: flex; justify-content: space-around; }
+            .nav-menu button { margin: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <h1>🌟 Plan Financiero</h1>
+            <nav class="nav-menu">
+                <button class="nav-btn active" data-page="dashboard">📊 Dashboard</button>
+                <button class="nav-btn" data-page="transactions">💸 Transacciones</button>
+                <button class="nav-btn" data-page="savings">💰 Ahorro</button>
+                <button class="nav-btn" data-page="checklist">✅ Checklist</button>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <!-- PÁGINA DASHBOARD -->
+            <div id="dashboard" class="page active">
+                <header class="header">
+                    <h2>Dashboard</h2>
+                    <p>Un resumen de tu situación financiera.</p>
+                </header>
+                <div class="card-grid">
+                    <div class="summary-card card-income">
+                        <h3>Ingresos Totales</h3>
+                        <div id="total-income" class="amount">$0.00</div>
+                    </div>
+                    <div class="summary-card card-expense">
+                        <h3>Gastos Totales</h3>
+                        <div id="total-expense" class="amount">$0.00</div>
+                    </div>
+                    <div class="summary-card card-saving">
+                        <h3>Ahorro Total</h3>
+                        <div id="total-saving" class="amount">$0.00</div>
+                    </div>
+                    <div class="summary-card card-balance">
+                        <h3>Balance</h3>
+                        <div id="balance" class="amount">$0.00</div>
+                    </div>
+                </div>
+                <div class="content-box">
+                    <canvas id="financial-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- PÁGINA TRANSACCIONES (INGRESOS Y GASTOS) -->
+            <div id="transactions" class="page">
+                <header class="header">
+                    <h2>Transacciones</h2>
+                    <p>Registra aquí tus ingresos y gastos.</p>
+                </header>
+                <div class="content-box">
+                    <h3>Nueva Transacción</h3>
+                    <form id="transaction-form" class="form-section">
+                        <select id="transaction-type" required>
+                            <option value="income">Ingreso</option>
+                            <option value="expense">Gasto</option>
+                        </select>
+                        <input type="text" id="transaction-description" placeholder="Descripción" required>
+                        <input type="number" id="transaction-amount" placeholder="Monto" required>
+                        <input type="date" id="transaction-date" required>
+                        <button type="submit" class="primary">Agregar</button>
+                    </form>
+                </div>
+                <div class="content-box">
+                    <h3>Historial de Transacciones</h3>
+                    <div class="table-container">
+                        <table id="transactions-table">
+                            <thead><tr><th>Tipo</th><th>Descripción</th><th>Monto</th><th>Fecha</th><th></th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PÁGINA AHORRO -->
+            <div id="savings" class="page">
+                <header class="header">
+                    <h2>Ahorro y Metas</h2>
+                    <p>Registra tus ahorros y sigue el progreso de tus metas.</p>
+                </header>
+                <div class="content-box">
+                    <h3>Nuevo Ahorro</h3>
+                    <form id="saving-form" class="form-section">
+                        <input type="text" id="saving-description" placeholder="Descripción de la meta" required>
+                        <input type="number" id="saving-amount" placeholder="Monto ahorrado" required>
+                        <input type="number" id="saving-goal" placeholder="Monto de la meta" required>
+                        <input type="date" id="saving-date" required>
+                        <button type="submit" class="primary">Agregar</button>
+                    </form>
+                </div>
+                 <div class="content-box">
+                    <h3>Metas de Ahorro</h3>
+                    <div class="table-container">
+                        <table id="savings-table">
+                            <thead><tr><th>Meta</th><th>Ahorrado</th><th>Objetivo</th><th>Progreso</th><th>Fecha</th><th></th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PÁGINA CHECKLIST -->
+            <div id="checklist" class="page">
+                <header class="header">
+                    <h2>Checklist Financiero</h2>
+                    <p>Sigue estos pasos para mejorar tus finanzas.</p>
+                </header>
+                <div id="checklist-container" class="content-box">
+                    <!-- Las tareas se generan con JS -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL DE FELICITACIÓN -->
+    <div id="congrats-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>🎉 ¡FELICIDADES! 🎉</h2>
+            <p>¡Has completado todas las tareas de tu checklist financiero!</p>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Estado de la aplicación
+        let state = {
+            transactions: [],
+            savings: [],
+            checklist: [
+                { id: 1, text: 'Registrar todos los ingresos del mes', completed: false },
+                { id: 2, text: 'Registrar todos los gastos fijos y variables', completed: false },
+                { id: 3, text: 'Definir un presupuesto mensual', completed: false },
+                { id: 4, text: 'Separar al menos el 10% de los ingresos para ahorro', completed: false },
+                { id: 5, text: 'Revisar el estado financiero semanalmente', completed: false },
+            ]
+        };
+
+        // Elementos del DOM
+        const navButtons = document.querySelectorAll('.nav-btn');
+        const pages = document.querySelectorAll('.page');
+        const transactionForm = document.getElementById('transaction-form');
+        const transactionsTableBody = document.querySelector('#transactions-table tbody');
+        const savingForm = document.getElementById('saving-form');
+        const savingsTableBody = document.querySelector('#savings-table tbody');
+        const checklistContainer = document.getElementById('checklist-container');
+
+        // --- NAVEGACIÓN ---
+        navButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetPage = button.dataset.page;
+                
+                navButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                
+                pages.forEach(page => {
+                    page.classList.toggle('active', page.id === targetPage);
+                });
+            });
+        });
+
+        // --- LÓGICA DE DATOS ---
+        const saveData = () => {
+            localStorage.setItem('financialPlannerState', JSON.stringify(state));
+        };
+
+        const loadData = () => {
+            const savedState = localStorage.getItem('financialPlannerState');
+            if (savedState) {
+                state = JSON.parse(savedState);
+            }
+        };
+
+        // --- RENDERIZADO ---
+        const render = () => {
+            renderTransactions();
+            renderSavings();
+            renderChecklist();
+            updateDashboard();
+        };
+
+        const updateDashboard = () => {
+            const totalIncome = state.transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+            const totalExpense = state.transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+            const totalSaving = state.savings.reduce((sum, s) => sum + s.amount, 0);
+            const balance = totalIncome - totalExpense;
+
+            document.getElementById('total-income').textContent = formatCurrency(totalIncome);
+            document.getElementById('total-expense').textContent = formatCurrency(totalExpense);
+            document.getElementById('total-saving').textContent = formatCurrency(totalSaving);
+            document.getElementById('balance').textContent = formatCurrency(balance);
+            
+            updateChart(totalIncome, totalExpense, totalSaving);
+        };
+
+        const renderTransactions = () => {
+            transactionsTableBody.innerHTML = '';
+            state.transactions.forEach(t => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><span style="color: ${t.type === 'income' ? 'var(--success)' : 'var(--danger)'};">${t.type === 'income' ? 'Ingreso' : 'Gasto'}</span></td>
+                    <td>${t.description}</td>
+                    <td>${formatCurrency(t.amount)}</td>
+                    <td>${t.date}</td>
+                    <td><button class="delete-btn" data-id="${t.id}">✖</button></td>
+                `;
+                transactionsTableBody.appendChild(row);
+            });
+        };
+        
+        const renderSavings = () => {
+            savingsTableBody.innerHTML = '';
+            state.savings.forEach(s => {
+                const progress = s.goal > 0 ? (s.amount / s.goal) * 100 : 0;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${s.description}</td>
+                    <td>${formatCurrency(s.amount)}</td>
+                    <td>${formatCurrency(s.goal)}</td>
+                    <td>
+                        <progress value="${progress}" max="100"></progress>
+                        <span>${progress.toFixed(1)}%</span>
+                    </td>
+                    <td>${s.date}</td>
+                    <td><button class="delete-btn" data-id="${s.id}">✖</button></td>
+                `;
+                savingsTableBody.appendChild(row);
+            });
+        };
+        
+        const renderChecklist = () => {
+            checklistContainer.innerHTML = '';
+            state.checklist.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'checklist-item';
+                if(item.completed) div.classList.add('completed');
+                div.innerHTML = `
+                    <input type="checkbox" id="task-${item.id}" data-id="${item.id}" ${item.completed ? 'checked' : ''}>
+                    <label for="task-${item.id}">${item.text}</label>
+                `;
+                checklistContainer.appendChild(div);
+            });
+        };
+
+        // --- MANEJO DE EVENTOS ---
+        transactionForm.addEventListener('submit', e => {
+            e.preventDefault();
+            const newTransaction = {
+                id: Date.now(),
+                type: document.getElementById('transaction-type').value,
+                description: document.getElementById('transaction-description').value,
+                amount: parseFloat(document.getElementById('transaction-amount').value),
+                date: document.getElementById('transaction-date').value,
+            };
+            state.transactions.push(newTransaction);
+            transactionForm.reset();
+            saveData();
+            render();
+        });
+
+        transactionsTableBody.addEventListener('click', e => {
+            if (e.target.classList.contains('delete-btn')) {
+                const id = parseInt(e.target.dataset.id);
+                state.transactions = state.transactions.filter(t => t.id !== id);
+                saveData();
+                render();
+            }
+        });
+
+        savingForm.addEventListener('submit', e => {
+            e.preventDefault();
+            const newSaving = {
+                id: Date.now(),
+                description: document.getElementById('saving-description').value,
+                amount: parseFloat(document.getElementById('saving-amount').value),
+                goal: parseFloat(document.getElementById('saving-goal').value),
+                date: document.getElementById('saving-date').value,
+            };
+            state.savings.push(newSaving);
+            savingForm.reset();
+            saveData();
+            render();
+        });
+
+        savingsTableBody.addEventListener('click', e => {
+            if (e.target.classList.contains('delete-btn')) {
+                const id = parseInt(e.target.dataset.id);
+                state.savings = state.savings.filter(s => s.id !== id);
+                saveData();
+                render();
+            }
+        });
+
+        checklistContainer.addEventListener('change', e => {
+            if (e.target.type === 'checkbox') {
+                const id = parseInt(e.target.dataset.id);
+                const task = state.checklist.find(item => item.id === id);
+                task.completed = e.target.checked;
+                saveData();
+                renderChecklist();
+                checkIfAllTasksCompleted();
+            }
+        });
+        
+        const checkIfAllTasksCompleted = () => {
+            const allCompleted = state.checklist.every(item => item.completed);
+            if (allCompleted) {
+                showCongratsModal();
+            }
+        };
+        
+        const showCongratsModal = () => {
+            const modal = document.getElementById('congrats-modal');
+            modal.classList.add('active');
+            
+            confetti({
+                particleCount: 150,
+                spread: 180,
+                origin: { y: 0.6 }
+            });
+
+            modal.addEventListener('click', () => modal.classList.remove('active'), { once: true });
+        };
+
+        // --- UTILIDADES ---
+        const formatCurrency = (amount) => {
+            return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(amount);
+        };
+        
+        // --- GRÁFICOS ---
+        const ctx = document.getElementById('financial-chart').getContext('2d');
+        let financialChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Ingresos', 'Gastos', 'Ahorro'],
+                datasets: [{
+                    data: [0, 0, 0],
+                    backgroundColor: ['#28a745', '#dc3545', '#007bff'],
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+        
+        const updateChart = (income, expense, saving) => {
+            financialChart.data.datasets[0].data = [income, expense, saving];
+            financialChart.update();
+        };
+
+        // --- INICIALIZACIÓN ---
+        loadData();
+        render();
+    });
+    </script>
+</body>
+</html> 
